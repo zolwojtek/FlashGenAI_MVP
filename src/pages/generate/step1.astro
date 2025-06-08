@@ -1,0 +1,10 @@
+---
+import AppLayout from "../../layouts/AppLayout.astro";
+import { Step1View } from "../../components/generate/Step1View";
+---
+
+<AppLayout title="Generate Flashcards - Step 1">
+  <div class="container mx-auto py-6">
+    <Step1View client:load />
+  </div>
+</AppLayout> 

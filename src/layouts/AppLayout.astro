@@ -1,0 +1,19 @@
+---
+import Layout from "./Layout.astro";
+import { SideNavigation } from "../components/SideNavigation";
+
+interface Props {
+  title?: string;
+}
+
+const { title = "FlashGen AI" } = Astro.props;
+---
+
+<Layout title={title}>
+  <div class="flex h-screen">
+    <SideNavigation className="w-64" client:load />
+    <main class="flex-1 overflow-y-auto p-6">
+      <slot />
+    </main>
+  </div>
+</Layout> 

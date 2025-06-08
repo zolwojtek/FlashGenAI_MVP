@@ -1,6 +1,9 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* Import flashcard styles */
+@import './flashcard.css';
+
 @custom-variant dark (&:is(.dark *));
 
 :root {
