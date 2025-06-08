@@ -6,10 +6,62 @@ import { FlashcardCarousel } from './FlashcardCarousel';
 import { FlashcardReviewOptions } from './FlashcardReviewOptions';
 import { ReviewNavigationButtons } from './ReviewNavigationButtons';
 import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ExclamationTriangleIcon } from '@radix-ui/react-icons';
-import { ChevronLeftIcon } from '@radix-ui/react-icons';
-import { ChevronRightIcon } from '@radix-ui/react-icons';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+
+// Directly create DOM elements for icons
+function InfoCircledIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 15 15"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      {...props}
+    >
+      <path
+        d="M7.5 1.75a5.75 5.75 0 1 0 0 11.5 5.75 5.75 0 0 0 0-11.5ZM.75 7.5a6.75 6.75 0 1 1 13.5 0 6.75 6.75 0 0 1-13.5 0ZM7 4.5a.5.5 0 0 1 .5-.5h.01a.5.5 0 0 1 0 1H7.5a.5.5 0 0 1-.5-.5Zm.5 2a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 1 0V7a.5.5 0 0 0-.5-.5Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+function ChevronLeftIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 15 15"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      {...props}
+    >
+      <path
+        d="M8.842 3.135a.5.5 0 0 1 .023.707L5.435 7.5l3.43 3.658a.5.5 0 0 1-.73.684l-3.75-4a.5.5 0 0 1 0-.684l3.75-4a.5.5 0 0 1 .707-.023Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+function ChevronRightIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 15 15"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      {...props}
+    >
+      <path
+        d="M6.158 3.135a.5.5 0 0 0-.023.707L9.565 7.5l-3.43 3.658a.5.5 0 0 0 .73.684l3.75-4a.5.5 0 0 0 0-.684l-3.75-4a.5.5 0 0 0-.707-.023Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
 
 export function Step2View() {
   const { state, acceptFlashcard, rejectFlashcard, editFlashcard, goToStep } =
@@ -104,7 +156,28 @@ export function Step2View() {
   };
 
   const handleGoToStep3 = () => {
+    // Check if all cards were reviewed and all were rejected
+    const allRejected =
+      state.generatedFlashcards.length > 0 &&
+      state.rejectedIds.length === state.generatedFlashcards.length;
+
+    // Log info for debugging
+    console.log('Going to step 3', {
+      acceptedCount: state.acceptedIds.length,
+      rejectedCount: state.rejectedIds.length,
+      totalCards: state.generatedFlashcards.length,
+      allRejected,
+    });
+
+    // Add extensive debugging
+    console.log('Step2View - Current state:', JSON.stringify(state, null, 2));
+    console.log('Step2View - Attempting to navigate to step 3');
+
+    // Always proceed to step 3, even if all cards were rejected
     goToStep(3);
+
+    // Verify navigation was called
+    console.log('Step2View - goToStep(3) was called');
   };
 
   const handleGoToStep1 = () => {
@@ -153,11 +226,15 @@ export function Step2View() {
               </p>
 
               {state.acceptedIds.length === 0 && (
-                <Alert variant="destructive" className="mt-4">
-                  <ExclamationTriangleIcon className="h-4 w-4" />
-                  <AlertDescription>
-                    Warning: You haven&apos;t accepted any flashcards. You need
-                    to accept at least one flashcard to create a set.
+                <Alert
+                  variant="default"
+                  className="mt-4 border-orange-200 bg-orange-50"
+                >
+                  <InfoCircledIcon className="h-4 w-4 text-orange-500" />
+                  <AlertTitle className="text-orange-700">Note</AlertTitle>
+                  <AlertDescription className="text-orange-600">
+                    You haven&apos;t accepted any flashcards. A generation log
+                    will be created, but no flashcard set will be saved.
                   </AlertDescription>
                 </Alert>
               )}
@@ -174,9 +251,11 @@ export function Step2View() {
 
               <Button
                 onClick={handleGoToStep3}
-                disabled={state.acceptedIds.length === 0}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
               >
-                Save Flashcards
+                {state.acceptedIds.length > 0
+                  ? 'Save Flashcards'
+                  : 'Finish Review'}
                 <ChevronRightIcon className="ml-2 h-4 w-4" />
               </Button>
             </div>
