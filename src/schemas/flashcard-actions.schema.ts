@@ -11,7 +11,7 @@ export const batchFlashcardActionSchema = z.object({
   title: z.string().max(255, 'Tytuł nie może przekraczać 255 znaków'),
   source_text: z
     .string()
-    .min(1000, 'Tekst źródłowy musi zawierać co najmniej 1000 znaków')
+    .min(100, 'Tekst źródłowy musi zawierać co najmniej 100 znaków')
     .max(10000, 'Tekst źródłowy nie może przekraczać 10000 znaków'),
   accept: z.array(
     z.string().uuid('ID zaakceptowanych fiszek muszą być prawidłowymi UUID')

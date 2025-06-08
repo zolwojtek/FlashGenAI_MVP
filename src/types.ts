@@ -175,9 +175,11 @@ export interface ReviewFlashcardSetRequestDTO {
 
 export interface BatchFlashcardActionResponseDTO {
   set_id: string;
+  title?: string;
   accepted_count: number;
   rejected_count: number;
-  success: boolean;
+  status: 'success' | 'error';
+  message?: string;
 }
 
 // Source Text DTOs

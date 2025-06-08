@@ -26,24 +26,6 @@ function AlertCircleIcon(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
-function ArrowLeftIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      width="15"
-      height="15"
-      viewBox="0 0 15 15"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      {...props}
-    >
-      <path
-        d="M6.85 3.35a.5.5 0 0 0-.7 0L2.35 7.15a.5.5 0 0 0 0 .7l3.8 3.8a.5.5 0 0 0 .7-.7L3.7 7.5h8.8a.5.5 0 0 0 0-1H3.7l3.15-3.15a.5.5 0 0 0 0-.7Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
-}
-
 function ArrowRightIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg
@@ -99,21 +81,58 @@ function Cross2Icon(props: React.SVGProps<SVGSVGElement>) {
 }
 
 export function Step3View() {
-  const { state, setTitle, saveFlashcardSet, goToStep } =
-    useGenerationProcess();
-  const navigate = useNavigate();
+  const { state, setTitle, saveFlashcardSet } = useGenerationProcess();
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isSaveInProgress, setIsSaveInProgress] = useState(false);
+  const [saveCompleted, setSaveCompleted] = useState(false);
+  const isMounted = React.useRef(true);
+  const initialTempSetId = React.useRef(state.tempSetId);
+  const autoSaveAttempted = React.useRef(false);
 
-  // Redirect to step 1 if there's no data
+  // On unmount, update the ref
   useEffect(() => {
-    // Only redirect if there's no temp set ID (which means no generation has occurred)
-    if (!state.tempSetId) {
-      navigate('/generate/step1');
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
+  // Set initial temp set ID on mount
+  useEffect(() => {
+    if (state.tempSetId) {
+      initialTempSetId.current = state.tempSetId;
+      console.log('Step3View - Stored initial tempSetId:', state.tempSetId);
     }
-    // Removed the check for state.acceptedIds.length === 0 to allow viewing step 3
-    // even when all cards were rejected
-  }, [state.tempSetId]);
+  }, []);
+
+  // Auto-save on component mount
+  useEffect(() => {
+    // Only try to auto-save once
+    if (autoSaveAttempted.current) {
+      return;
+    }
+
+    // Skip if already saving or completed
+    if (isSaving || saveCompleted) {
+      return;
+    }
+
+    // If we have a valid title and flashcards, start saving automatically
+    if (
+      state.tempSetId &&
+      state.editedTitle.trim() &&
+      !autoSaveAttempted.current
+    ) {
+      console.log('Step3View - Auto-saving on mount');
+      autoSaveAttempted.current = true;
+      // Use a setTimeout to avoid dependency issues
+      setTimeout(() => {
+        if (isMounted.current) {
+          handleSave();
+        }
+      }, 500);
+    }
+  }, [state.tempSetId, state.editedTitle, isSaving, saveCompleted]);
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTitle(e.target.value);
@@ -126,35 +145,40 @@ export function Step3View() {
     }
 
     try {
+      // Set all saving-related states
       setIsSaving(true);
+      setIsSaveInProgress(true);
+      setSaveCompleted(false);
       setError(null);
 
       console.log('Step3View - Starting save process');
 
-      // Add a small delay to ensure state updates are processed
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      // Longer delay to ensure UI state updates are processed
+      await new Promise((resolve) => setTimeout(resolve, 300));
 
       const result = await saveFlashcardSet();
       console.log('Step3View - Save successful, result:', result);
 
-      // Add a small delay before navigation
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      // Mark save as completed
+      setSaveCompleted(true);
 
-      // Redirect to dashboard or set details page
-      console.log('Step3View - Navigating to home');
-      navigate('/');
+      // Show success message
+      setIsSaving(false);
+
+      // No redirection or state reset - just stay on the page with success message
     } catch (error) {
       console.error('Step3View - Error in handleSave:', error);
       setError(
         error instanceof Error ? error.message : 'Failed to save flashcard set'
       );
+      // Reset save states on error
+      setIsSaveInProgress(false);
+      setSaveCompleted(false);
     } finally {
-      setIsSaving(false);
+      if (isMounted.current) {
+        setIsSaving(false);
+      }
     }
-  };
-
-  const handleBack = () => {
-    goToStep(2);
   };
 
   // Calculate statistics
@@ -162,13 +186,39 @@ export function Step3View() {
   const accepted = state.acceptedIds?.length || 0;
   const rejected = state.rejectedIds?.length || 0;
 
+  // Check if we have any flashcards to show
+  const hasFlashcards = totalGenerated > 0;
+
+  // If no flashcards, show a message
+  if (!hasFlashcards) {
+    return (
+      <GenerateLayout currentStep={3}>
+        <div className="space-y-8 max-w-2xl mx-auto">
+          <div className="text-center">
+            <h2 className="text-2xl font-semibold mb-2">
+              No Flashcards Available
+            </h2>
+            <p className="text-gray-600 mb-8">
+              No flashcards have been generated. Please use the main navigation
+              to start a new generation.
+            </p>
+          </div>
+        </div>
+      </GenerateLayout>
+    );
+  }
+
   return (
     <GenerateLayout currentStep={3}>
       <div className="space-y-8 max-w-2xl mx-auto">
         <div className="text-center">
           <h2 className="text-2xl font-semibold mb-2">Save Flashcard Set</h2>
           <p className="text-gray-600">
-            Review your flashcard set information before saving.
+            {isSaving
+              ? 'Saving your flashcard set...'
+              : saveCompleted
+                ? 'Flashcard set saved successfully!'
+                : 'Your flashcard set is being saved automatically.'}
           </p>
         </div>
 
@@ -191,17 +241,25 @@ export function Step3View() {
           </Alert>
         )}
 
-        <div className="flex justify-between pt-4">
-          <Button variant="outline" onClick={handleBack}>
-            <ArrowLeftIcon className="mr-2 h-4 w-4" />
-            Back to Review
-          </Button>
+        {saveCompleted && (
+          <Alert variant="default" className="bg-green-50 border-green-200">
+            <CheckCircledIcon className="h-4 w-4 text-green-500" />
+            <AlertDescription className="text-green-700">
+              {state.acceptedIds.length > 0
+                ? 'Flashcard set saved successfully!'
+                : 'Generation log saved successfully!'}
+            </AlertDescription>
+          </Alert>
+        )}
 
-          <SaveSetButton
-            onClick={handleSave}
-            isLoading={isSaving}
-            isDisabled={!state.editedTitle.trim()}
-          />
+        <div className="flex justify-center pt-4">
+          {!saveCompleted && (
+            <SaveSetButton
+              onClick={handleSave}
+              isLoading={isSaving}
+              isDisabled={!state.editedTitle.trim() || saveCompleted}
+            />
+          )}
         </div>
       </div>
     </GenerateLayout>
@@ -215,6 +273,7 @@ interface TitleFormProps {
 }
 
 function TitleForm({ value, onChange, suggestedTitle }: TitleFormProps) {
+  // Display title as static text, not an editable input
   return (
     <div className="space-y-2">
       <label
@@ -223,18 +282,9 @@ function TitleForm({ value, onChange, suggestedTitle }: TitleFormProps) {
       >
         Flashcard Set Title
       </label>
-      <Input
-        id="title"
-        value={value}
-        onChange={onChange}
-        placeholder="Enter a title for your flashcard set"
-        className="w-full"
-      />
-      {suggestedTitle && suggestedTitle !== value && (
-        <p className="text-sm text-gray-500">
-          <span className="font-medium">Suggested title:</span> {suggestedTitle}
-        </p>
-      )}
+      <div className="p-2 border rounded-md bg-gray-50">
+        <p className="text-gray-800 font-medium">{value || suggestedTitle}</p>
+      </div>
     </div>
   );
 }
@@ -285,7 +335,8 @@ function GenerationStats({
             <AlertCircleIcon className="h-4 w-4 text-amber-500" />
             <AlertDescription className="text-amber-700">
               No flashcards have been accepted. Only a generation log will be
-              saved, without creating a flashcard set.
+              saved, without creating a flashcard set. You can still click "Save
+              Generation Log" to record this activity.
             </AlertDescription>
           </Alert>
         )}
@@ -308,7 +359,11 @@ function SaveSetButton({ onClick, isLoading, isDisabled }: SaveSetButtonProps) {
     <Button
       onClick={onClick}
       disabled={isDisabled || isLoading}
-      className={`px-6 ${hasAcceptedCards ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'} text-white`}
+      className={`px-6 ${
+        hasAcceptedCards
+          ? 'bg-blue-600 hover:bg-blue-700'
+          : 'bg-green-600 hover:bg-green-700'
+      } text-white`}
     >
       {isLoading ? (
         <>

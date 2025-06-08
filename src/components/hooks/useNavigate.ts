@@ -3,13 +3,21 @@
  * Since Astro doesn't have a built-in router like Next.js,
  * this is a simple wrapper around window.location
  */
-export const useNavigate = () => {
-  const navigate = (path: string) => {
-    if (typeof window !== 'undefined') {
-      // Use full page navigation to ensure Astro renders the new page
+export function useNavigate() {
+  // This is a mock implementation - in a real app, this would use the framework's router
+  return (path: string, options?: { replace?: boolean }) => {
+    console.log(`Navigation triggered to: ${path}`, {
+      options,
+      timestamp: new Date().toISOString(),
+    });
+
+    // In a mock environment, we'll use window.location
+    if (options?.replace) {
+      console.log('Using replace navigation');
+      window.location.replace(path);
+    } else {
+      console.log('Using push navigation');
       window.location.href = path;
     }
   };
-
-  return navigate;
-};
+}

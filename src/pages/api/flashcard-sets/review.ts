@@ -50,21 +50,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
     // Extract validated data
     const reviewData = validationResult.data;
 
-    // Ensure there are accepted flashcards (at least one required)
-    if (reviewData.accept.length === 0) {
-      return new Response(
-        JSON.stringify({
-          error: "Validation error",
-          message: "Musisz zaakceptować co najmniej jedną fiszkę",
-        }),
-        {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // Process review and save accepted flashcards
+    // Process review and save accepted flashcards (or just log if none accepted)
     const result = await flashcardReviewService.processFlashcardReview(supabase, userId, reviewData);
 
     // Return success response

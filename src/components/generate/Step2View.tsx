@@ -70,9 +70,15 @@ export function Step2View() {
   const [showReviewOptions, setShowReviewOptions] = useState(true);
   const [reviewComplete, setReviewComplete] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const initialCheckComplete = React.useRef(false);
 
-  // Check for flashcards in sessionStorage on initial load
+  // Check for flashcards in sessionStorage on initial load - but only once
   useEffect(() => {
+    if (initialCheckComplete.current) {
+      console.log('Initial check already completed, skipping');
+      return;
+    }
+
     // Give a brief moment for the page to load and state to initialize
     const loadingTimer = setTimeout(() => {
       console.log('Checking for flashcards on initial load...');
@@ -91,6 +97,7 @@ export function Step2View() {
                 'Found flashcards in sessionStorage, staying on step2'
               );
               setIsLoading(false);
+              initialCheckComplete.current = true;
               return;
             }
           } catch (error) {
@@ -98,12 +105,17 @@ export function Step2View() {
           }
         }
 
-        // If we get here, redirect to step1
-        console.log('No flashcards found, redirecting to step1');
-        navigate('/generate/step1');
+        // Only redirect if we haven't completed the initial check yet
+        if (!initialCheckComplete.current) {
+          // If we get here, redirect to step1
+          console.log('No flashcards found, redirecting to step1');
+          initialCheckComplete.current = true;
+          navigate('/generate/step1', { replace: true });
+        }
       } else {
         console.log('Flashcards found in state, showing step2');
         setIsLoading(false);
+        initialCheckComplete.current = true;
       }
     }, 300);
 
@@ -155,6 +167,7 @@ export function Step2View() {
     setReviewComplete(true);
   };
 
+  // Handle the actual redirect to step 3 when the goToStep function is called
   const handleGoToStep3 = () => {
     // Check if all cards were reviewed and all were rejected
     const allRejected =
@@ -170,7 +183,12 @@ export function Step2View() {
     });
 
     // Add extensive debugging
-    console.log('Step2View - Current state:', JSON.stringify(state, null, 2));
+    console.log('Step2View - Current state:', {
+      tempSetId: state.tempSetId,
+      flashcards: state.generatedFlashcards.length,
+      accepted: state.acceptedIds.length,
+      rejected: state.rejectedIds.length,
+    });
     console.log('Step2View - Attempting to navigate to step 3');
 
     // Always proceed to step 3, even if all cards were rejected

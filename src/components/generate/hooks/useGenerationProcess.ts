@@ -10,6 +10,17 @@ import {
   CreationMode,
 } from '@/types';
 
+// Helper function to generate a UUID v4
+function generateUUID(): string {
+  // This simple implementation generates a UUID-like string
+  // In production, use a proper UUID library
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
 const initialState: GenerationProcessState = {
   sourceText: '',
   currentStep: 1,
@@ -47,6 +58,19 @@ export const useGenerationProcess = () => {
       sessionStorage.setItem('flashcardGenerationState', JSON.stringify(state));
     }
   }, [state]);
+
+  // Add a dedicated function to reset state
+  const resetState = () => {
+    console.log(
+      'useGenerationProcess - Explicitly resetting state to initial values'
+    );
+
+    // Clear session storage
+    sessionStorage.removeItem('flashcardGenerationState');
+
+    // Reset state to initial values
+    setState(initialState);
+  };
 
   // Fetch user's generation limit
   const fetchGenerationLimit =
@@ -129,7 +153,7 @@ export const useGenerationProcess = () => {
             const question = sentence.replace(keyword, '_______');
 
             mockFlashcards.push({
-              id: `mock-${i + 1}`,
+              id: generateUUID(),
               front_content: `Complete the sentence: "${question}"`,
               back_content: keyword,
               creation_mode: CreationMode.AI,
@@ -142,7 +166,7 @@ export const useGenerationProcess = () => {
       if (mockFlashcards.length < 5) {
         const genericCards = [
           {
-            id: 'generic-1',
+            id: generateUUID(),
             front_content: 'What is the main topic of this text?',
             back_content:
               'Based on the content, the main topic appears to be about ' +
@@ -152,14 +176,14 @@ export const useGenerationProcess = () => {
             creation_mode: CreationMode.AI,
           },
           {
-            id: 'generic-2',
+            id: generateUUID(),
             front_content: 'Define the concept mentioned in paragraph 2',
             back_content:
               'The concept refers to the systematic approach to organizing information for better retention.',
             creation_mode: CreationMode.AI,
           },
           {
-            id: 'generic-3',
+            id: generateUUID(),
             front_content:
               'What is the relationship between the two key elements discussed?',
             back_content:
@@ -167,14 +191,14 @@ export const useGenerationProcess = () => {
             creation_mode: CreationMode.AI,
           },
           {
-            id: 'generic-4',
+            id: generateUUID(),
             front_content: 'Explain the significance of the example provided',
             back_content:
               'The example illustrates how the theoretical concept can be applied in practical scenarios.',
             creation_mode: CreationMode.AI,
           },
           {
-            id: 'generic-5',
+            id: generateUUID(),
             front_content: 'Summarize the conclusion of the text',
             back_content:
               'The conclusion emphasizes the importance of consistent practice and application of the discussed methods.',
@@ -191,7 +215,7 @@ export const useGenerationProcess = () => {
       }
 
       const mockData: GenerateFlashcardSetResponseDTO = {
-        set_id: 'mock-set-' + Date.now(),
+        set_id: generateUUID(),
         title: `Flashcards: ${currentSourceText.substring(0, 30)}...`,
         flashcards: mockFlashcards,
         created_at: new Date().toISOString(),
@@ -319,32 +343,30 @@ export const useGenerationProcess = () => {
           reject: state.rejectedIds,
         };
 
-        // For now, mock the API call with a successful response
-        // This allows saving even when all cards are rejected (for logging purposes)
-        console.log('Saving with payload:', payload);
+        // Send data to API endpoint for saving to Supabase
+        console.log('Sending data to API endpoint:', payload);
 
-        // In a mock environment, create a mock response
-        const mockResponse: BatchFlashcardActionResponseDTO = {
-          set_id: state.tempSetId,
-          title: state.editedTitle,
-          accepted_count: state.acceptedIds.length,
-          rejected_count: state.rejectedIds.length,
-          status: 'success',
-          message:
-            state.acceptedIds.length > 0
-              ? 'Flashcard set saved successfully'
-              : 'Generation log saved successfully (no cards accepted)',
-        };
+        // Call the actual API endpoint
+        const response = await fetch('/api/flashcard-sets/review', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
 
-        // Clear the session storage on successful save
-        sessionStorage.removeItem('flashcardGenerationState');
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to save flashcard set');
+        }
 
-        // Reset state
-        setState(initialState);
+        // Parse the response
+        const result: BatchFlashcardActionResponseDTO = await response.json();
+        console.log('Save successful, API response:', result);
 
-        console.log('Save successful, returning to home');
+        setState((prev) => ({ ...prev, loading: false }));
 
-        return mockResponse;
+        return result;
       } catch (error) {
         console.error('Error saving flashcard set:', error);
         setState((prev) => ({
@@ -353,10 +375,9 @@ export const useGenerationProcess = () => {
             error instanceof Error
               ? error.message
               : 'Failed to save flashcard set',
+          loading: false,
         }));
         throw error;
-      } finally {
-        setState((prev) => ({ ...prev, loading: false }));
       }
     };
 
@@ -383,5 +404,6 @@ export const useGenerationProcess = () => {
     setTitle,
     saveFlashcardSet,
     getFlashcardSet,
+    resetState,
   };
 };
